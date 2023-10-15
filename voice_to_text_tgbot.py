@@ -1,13 +1,46 @@
+
 !pip install pyTelegramBotAPI
 !pip install SpeechRecognition
 !pip install pydub
 import os
 import telebot
 import speech_recognition
+from PIL import Image, ImageEnhance, ImageFilter
 from pydub import AudioSegment
 
 token = ''
 bot = telebot.TeleBot(token)
+
+def transform_image(filename):
+    # Функция обработки изображения
+    source_image = Image.open(filename)
+    enhanced_image = source_image.filter(ImageFilter.EMBOSS)
+    enhanced_image = enhanced_image.convert('RGB')
+    width = enhanced_image.size[0]
+    height = enhanced_image.size[1]
+
+    enhanced_image = enhanced_image.resize((width // 2, height // 2))
+
+    enhanced_image.save(filename)
+    return filename
+
+
+@bot.message_handler(content_types=['photo'])
+def resend_photo(message):
+    # Функция отправки обработанного изображения
+    file_id = message.photo[-1].file_id
+    filename = download_file(bot, file_id)
+
+    # Трансформируем изображение
+    transform_image(filename)
+
+    image = open(filename, 'rb')
+    bot.send_photo(message.chat.id, image)
+    image.close()
+    
+    # Не забываем удалять ненужные изображения
+    if os.path.exists(filename):
+        os.remove(filename)
 
 def oga2wav(filename):
     # Конвертация формата файлов
@@ -57,7 +90,8 @@ def say_whoami(message):
 def say_help(message):
     bot.send_message(message.chat.id, '/start - Начало работы с ботом\n'+
                      '/help - Посмотреть список всех доступных команд\n'+
-                     '/whoami - Вывести ваше имя и фамилию')
+                     '/whoami - Вывести ваше имя и фамилию'+
+                     'Отправь фото и я его обработаю и сожму')
 
 @bot.message_handler(content_types=['voice'])
 def transcript(message):
